@@ -53,6 +53,7 @@ import javax.persistence.spi.PersistenceProviderResolverHolder;
 import javax.persistence.spi.PersistenceUnitInfo;
 import javax.persistence.spi.PersistenceUnitTransactionType;
 import javax.sql.DataSource;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URL;
@@ -111,8 +112,11 @@ public abstract class AbstractJpaPersistenceTest {
     @BeforeClass
     public static void initLogging() {
         try {
-            LogManager.getLogManager().readConfiguration(AbstractJpaPersistenceTest.class.getResourceAsStream(
-                    "/logging.properties"));
+            InputStream configuration = AbstractJpaPersistenceTest.class.getResourceAsStream(
+                    "/logging.properties");
+            if (configuration != null) {
+                LogManager.getLogManager().readConfiguration(configuration);
+            }
         } catch (Exception e) {
             e.printStackTrace(System.err);
         }
@@ -410,6 +414,17 @@ public abstract class AbstractJpaPersistenceTest {
         }
     }
 
+    protected void replaceEntityManager(EntityManager newEntityManager) {
+        if (em != null && em.isOpen()) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            em.close();
+        }
+        em = newEntityManager;
+        em.getTransaction().begin();
+    }
+
     protected Properties createProperties(String dbAction) {
         Properties properties = new Properties();
         properties.put("javax.persistence.jdbc.url", System.getProperty("jdbc.url", "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1"));
@@ -424,8 +439,8 @@ public abstract class AbstractJpaPersistenceTest {
 
     protected abstract Class<?>[] getEntityClasses();
 
-    protected Connection getConnection(EntityManager em) {
-        return em.unwrap(Connection.class);
+    protected final Connection getConnection(EntityManager em) {
+        return jpaProvider.getConnection(em);
     }
     
     protected CriteriaBuilderConfiguration configure(CriteriaBuilderConfiguration config) {
@@ -436,7 +451,7 @@ public abstract class AbstractJpaPersistenceTest {
         return properties;
     }
 
-    private EntityManagerFactory createEntityManagerFactory(String persistenceUnitName, Map<Object, Object> properties) {
+    protected EntityManagerFactory createEntityManagerFactory(String persistenceUnitName, Map<Object, Object> properties) {
         MutablePersistenceUnitInfo persistenceUnitInfo = new MutablePersistenceUnitInfo();
         persistenceUnitInfo.setPersistenceUnitName(persistenceUnitName);
         persistenceUnitInfo.setTransactionType(PersistenceUnitTransactionType.RESOURCE_LOCAL);

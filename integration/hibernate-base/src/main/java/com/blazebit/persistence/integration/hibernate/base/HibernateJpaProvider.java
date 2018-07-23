@@ -56,7 +56,9 @@ import javax.persistence.metamodel.ManagedType;
 import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -165,6 +167,28 @@ public class HibernateJpaProvider implements JpaProvider {
             this.supportsJoinTableCleanupOnDelete = true;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public Connection getConnection(EntityManager em) {
+        return em.unwrap(SessionImplementor.class).connection();
+    }
+
+    @Override
+    public void setConnection(EntityManager em, Connection connection) {
+        SessionImplementor session = em.unwrap(SessionImplementor.class);
+        // TODO: Make this pretty when merging with branch that has provider per version
+//        LogicalConnectionImplementor logicalConnection = session.getTransactionCoordinator().getJdbcCoordinator().getLogicalConnection();
+        try {
+            Object jdbcCoordinator = session.getClass().getMethod("getJdbcCoordinator").invoke(session);
+            Object logicalConnection = jdbcCoordinator.getClass().getMethod("getLogicalConnection").invoke(jdbcCoordinator);
+            Field physicalConnection = logicalConnection.getClass().getDeclaredField("physicalConnection");
+//            Field physicalConnection = logicalConnection.getClass().getDeclaredField("providedConnection");
+            physicalConnection.setAccessible(true);
+            physicalConnection.set(logicalConnection, connection);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to integrate with Hibernate!", e);
         }
     }
 

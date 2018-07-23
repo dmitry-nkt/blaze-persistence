@@ -22,9 +22,6 @@ import org.eclipse.persistence.internal.jpa.EntityManagerFactoryProvider;
 import org.eclipse.persistence.internal.jpa.EntityManagerSetupImpl;
 import org.eclipse.persistence.sessions.factories.SessionManager;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityTransaction;
-import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -62,16 +59,6 @@ public abstract class AbstractPersistenceTest extends AbstractJpaPersistenceTest
     @Override
     protected void addIgnores(DatabaseCleaner applicableCleaner) {
         applicableCleaner.addIgnoredTable("SEQUENCE");
-    }
-
-    @Override
-    protected Connection getConnection(EntityManager em) {
-        EntityTransaction tx = em.getTransaction();
-        boolean startedTransaction = !tx.isActive();
-        if (startedTransaction) {
-            tx.begin();
-        }
-        return em.unwrap(Connection.class);
     }
 
     @Override

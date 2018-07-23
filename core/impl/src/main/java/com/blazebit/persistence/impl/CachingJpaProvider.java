@@ -26,6 +26,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.Query;
 import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.ManagedType;
+import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +47,16 @@ public final class CachingJpaProvider implements JpaProvider {
 
     public JpaProvider getJpaProvider() {
         return jpaProvider;
+    }
+
+    @Override
+    public Connection getConnection(EntityManager em) {
+        return jpaProvider.getConnection(em);
+    }
+
+    @Override
+    public void setConnection(EntityManager em, Connection connection) {
+        jpaProvider.setConnection(em, connection);
     }
 
     @Override

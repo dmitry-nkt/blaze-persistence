@@ -30,6 +30,7 @@ import org.eclipse.persistence.mappings.ManyToManyMapping;
 import org.eclipse.persistence.mappings.OneToOneMapping;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityTransaction;
 import javax.persistence.PersistenceUnitUtil;
 import javax.persistence.Query;
 import javax.persistence.metamodel.Attribute;
@@ -38,6 +39,7 @@ import javax.persistence.metamodel.ManagedType;
 import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.Type;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,6 +59,27 @@ public class EclipseLinkJpaProvider implements JpaProvider {
 
     public EclipseLinkJpaProvider(PersistenceUnitUtil persistenceUnitUtil) {
         this.persistenceUnitUtil = persistenceUnitUtil;
+    }
+
+    @Override
+    public Connection getConnection(EntityManager em) {
+        EntityTransaction tx = em.getTransaction();
+        boolean startedTransaction = !tx.isActive();
+        try {
+            if (startedTransaction) {
+                tx.begin();
+            }
+            return em.unwrap(Connection.class);
+        } finally {
+            if (startedTransaction) {
+                tx.commit();
+            }
+        }
+    }
+
+    @Override
+    public void setConnection(EntityManager em, Connection connection) {
+        throw new UnsupportedOperationException("Not supported");
     }
 
     @Override

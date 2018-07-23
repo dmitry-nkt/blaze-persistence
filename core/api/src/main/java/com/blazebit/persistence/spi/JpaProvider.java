@@ -24,6 +24,7 @@ import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.ManagedType;
 import java.util.List;
 import java.util.Map;
+import java.sql.Connection;
 
 /**
  * A JPA provider implementation provides information about which features are supported by a JPA implementation.
@@ -446,6 +447,22 @@ public interface JpaProvider {
      * @since 1.3.0
      */
     public Object getIdentifier(Object entity);
+
+    /**
+     * Returns the underlying connection of the entity manager.
+     *
+     * @param em The entity manager
+     * @return The underlying connection of the entity manager
+     */
+    public Connection getConnection(EntityManager em);
+
+    /**
+     * Sets the given connection as the underlying connection of the entity manager.
+     *
+     * @param em The entity manager
+     * @param connection The connection to set
+     */
+    public void setConnection(EntityManager em, Connection connection);
 
     /**
      * The possible locations of a constraint.

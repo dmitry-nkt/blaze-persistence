@@ -27,6 +27,7 @@ import org.datanucleus.metadata.AbstractMemberMetaData;
 import org.datanucleus.metadata.ColumnMetaData;
 import org.datanucleus.metadata.EmbeddedMetaData;
 import org.datanucleus.metadata.KeyMetaData;
+import org.datanucleus.store.connection.ConnectionManager;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceUnitUtil;
@@ -37,6 +38,7 @@ import javax.persistence.metamodel.ManagedType;
 import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.Type;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,6 +64,18 @@ public class DataNucleus51JpaProvider implements JpaProvider {
         this.major = major;
         this.minor = minor;
         this.fix = fix;
+    }
+
+    @Override
+    public Connection getConnection(EntityManager em) {
+        ExecutionContext ec = em.unwrap(ExecutionContext.class);
+        ConnectionManager connectionManager = ec.getStoreManager().getConnectionManager();
+        return (Connection) connectionManager.getConnection(ec).getConnection();
+    }
+
+    @Override
+    public void setConnection(EntityManager em, Connection connection) {
+        throw new UnsupportedOperationException("Not supported");
     }
 
     @Override

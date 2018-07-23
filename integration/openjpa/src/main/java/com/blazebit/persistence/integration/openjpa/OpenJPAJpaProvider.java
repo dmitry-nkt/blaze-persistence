@@ -29,6 +29,7 @@ import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.ManagedType;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.Type;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -48,6 +49,16 @@ public class OpenJPAJpaProvider implements JpaProvider {
 
     public OpenJPAJpaProvider(PersistenceUnitUtil persistenceUnitUtil) {
         this.persistenceUnitUtil = persistenceUnitUtil;
+    }
+
+    @Override
+    public Connection getConnection(EntityManager em) {
+        return em.unwrap(Connection.class);
+    }
+
+    @Override
+    public void setConnection(EntityManager em, Connection connection) {
+        throw new UnsupportedOperationException("Not supported");
     }
 
     @Override
