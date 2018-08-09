@@ -100,6 +100,8 @@ public abstract class AbstractPartTreeBlazePersistenceQuery extends AbstractJpaQ
 
     protected abstract boolean isDelete(PartTree tree);
 
+    protected abstract int getOffset(Pageable pageable);
+
     @Override
     public Query doCreateQuery(Object[] values) {
         return query.createQuery(values);
@@ -280,7 +282,7 @@ public abstract class AbstractPartTreeBlazePersistenceQuery extends AbstractJpaQ
             com.blazebit.persistence.CriteriaBuilder<?> cb = ((BlazeCriteriaQuery<?>) criteriaQuery).createCriteriaBuilder(getEntityManager());
             TypedQuery<Object> jpaQuery;
             ParameterBinder binder = getBinder(values, expressions);
-            int firstResult = binder.getPageable().getPageNumber() * binder.getPageable().getPageSize();
+            int firstResult = getOffset(binder.getPageable());
             int maxResults = binder.getPageable().getPageSize();
             if (entityViewClass == null) {
                 if (withCount) {

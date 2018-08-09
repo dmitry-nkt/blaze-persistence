@@ -169,7 +169,13 @@ public class KeysetPageableParamConverterProvider implements ParamConverterProvi
             sort = new Sort(orders);
         }
 
-        pageableConfiguration.setFallbackPageable(new PageRequest(page, pageSize, sort));
+        int offset;
+        if (page == 0) {
+            offset = 0;
+        } else {
+            offset = page * pageSize;
+        }
+        pageableConfiguration.setFallbackPageable(new PageRequest(sort, offset, pageSize));
     }
 
 }

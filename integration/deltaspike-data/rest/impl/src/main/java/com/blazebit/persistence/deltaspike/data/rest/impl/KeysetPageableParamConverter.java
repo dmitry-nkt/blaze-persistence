@@ -92,6 +92,12 @@ public class KeysetPageableParamConverter implements ParamConverter<Pageable> {
         pageSize = pageSize < 1 ? defaultOrFallback.getPageSize() : pageSize;
         // Limit upper bound
         pageSize = pageSize > maxPageSize ? maxPageSize : pageSize;
+        int offset;
+        if (page == 0) {
+            offset = 0;
+        } else {
+            offset = page * pageSize;
+        }
 
         Sort sort = resolveSort(queryParameters.get(pageableConfiguration.getSortParameterName()));
 
@@ -151,10 +157,10 @@ public class KeysetPageableParamConverter implements ParamConverter<Pageable> {
                 }
             }
             
-            return new KeysetPageRequest(keysetPage, sort, page, pageSize);
+            return new KeysetPageRequest(keysetPage, sort, offset, pageSize);
         }
 
-        return new PageRequest(page, pageSize, sort);
+        return new PageRequest(sort, offset, pageSize);
     }
 
     private Serializable convert(JsonNode valueNode, Class<? extends Serializable> propertyType) {

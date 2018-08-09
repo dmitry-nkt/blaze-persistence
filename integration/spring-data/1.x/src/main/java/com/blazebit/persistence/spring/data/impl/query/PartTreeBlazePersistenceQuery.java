@@ -21,6 +21,7 @@ import com.blazebit.persistence.CriteriaBuilderFactory;
 import com.blazebit.persistence.spring.data.base.query.AbstractPartTreeBlazePersistenceQuery;
 import com.blazebit.persistence.spring.data.base.query.EntityViewAwareJpaQueryMethod;
 import com.blazebit.persistence.view.EntityViewManager;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.provider.PersistenceProvider;
 import org.springframework.data.repository.query.parser.PartTree;
 
@@ -46,5 +47,10 @@ public class PartTreeBlazePersistenceQuery extends AbstractPartTreeBlazePersiste
     @Override
     protected boolean isDelete(PartTree tree) {
         return tree.isDelete();
+    }
+
+    @Override
+    protected int getOffset(Pageable pageable) {
+        return pageable.getOffset();
     }
 }
