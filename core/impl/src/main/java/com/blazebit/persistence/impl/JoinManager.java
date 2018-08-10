@@ -59,6 +59,7 @@ import com.blazebit.persistence.impl.util.Keywords;
 import com.blazebit.persistence.parser.util.ExpressionUtils;
 import com.blazebit.persistence.parser.util.JpaMetamodelUtils;
 import com.blazebit.persistence.spi.DbmsModificationState;
+import com.blazebit.persistence.spi.ExtendedAttribute;
 import com.blazebit.persistence.spi.ExtendedManagedType;
 import com.blazebit.persistence.spi.JpaProvider;
 
@@ -255,11 +256,11 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
 
         private void visitKeyOrIndexExpression(PathExpression pathExpression) {
             JoinNode node = (JoinNode) pathExpression.getBaseNode();
-            Attribute<?, ?> attribute = node.getParentTreeNode().getAttribute();
+            ExtendedAttribute<?, ?> attribute = node.getParentTreeNode().getAttribute();
             // Exclude element collections as they are not problematic
-            if (attribute.getPersistentAttributeType() != Attribute.PersistentAttributeType.ELEMENT_COLLECTION) {
+            if (attribute.getAttribute().getPersistentAttributeType() != Attribute.PersistentAttributeType.ELEMENT_COLLECTION) {
                 // There are weird mappings possible, we have to check if the attribute is a join table
-                if (jpaProvider.getJoinTable(node.getParent().getEntityType(), attribute.getName()) != null) {
+                if (attribute.getJoinTable() != null) {
                     keyRestrictedLeftJoins.add(node);
                 }
             }
@@ -1112,7 +1113,7 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
             }
 
             // Collect the join nodes referring to collections
-            if (collectCollectionJoinNodes && isCollection && !node.hasArrayExpressionPredicate()) {
+            if (collectCollectionJoinNodes && isCollection && !node.isUniqueKeyExpressionCondition()) {
                 // TODO: Maybe we can improve this and treat array access joins like non-collection join nodes
                 collectionJoinNodes.add(node);
             }
@@ -1999,7 +2000,7 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         PathExpression keyPath = new PathExpression(new ArrayList<PathElementExpression>(), true);
         keyPath.getExpressions().add(new PropertyExpression(joinNode.getAliasInfo().getAlias()));
         keyPath.setPathReference(new SimplePathReference(joinNode, null, joinNode.getNodeType()));
-        Attribute<?, ?> arrayBaseAttribute = joinNode.getParentTreeNode().getAttribute();
+        Attribute<?, ?> arrayBaseAttribute = joinNode.getParentTreeNode().getAttribute().getAttribute();
         Expression keyExpression;
         if (arrayBaseAttribute instanceof ListAttribute<?, ?>) {
             keyExpression = new ListIndexExpression(keyPath);
@@ -2166,10 +2167,9 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         implicitJoin(mapKeyExpression.getPath(), true, null, fromClause, selectAlias, fromSubquery, fromSelectAlias, joinRequired, false, fetch);
         JoinNode current = (JoinNode) mapKeyExpression.getPath().getBaseNode();
         String joinRelationName = "KEY(" + current.getParentTreeNode().getRelationName() + ")";
-        MapAttribute<?, ?, ?> mapAttribute = (MapAttribute<?, ?, ?>) current.getParentTreeNode().getAttribute();
-        Attribute<?, ?> keyAttribute = new MapKeyAttribute<>(mapAttribute);
+        ExtendedAttribute<?, ?> keyAttribute = new ExtendedMapKeyAttribute<>(current.getParentTreeNode().getAttribute());
         String aliasToUse = alias == null ? current.getParentTreeNode().getRelationName().replaceAll("\\.", "_") + "_key" : alias;
-        Type<?> joinRelationType = metamodel.type(mapAttribute.getKeyJavaType());
+        Type<?> joinRelationType = metamodel.type(keyAttribute.getElementClass());
         current = getOrCreate(current, joinRelationName, joinRelationType, null, aliasToUse, JoinType.LEFT, "Ambiguous implicit join", implicit, true, keyAttribute);
         return current;
     }
@@ -2178,8 +2178,7 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         implicitJoin(mapEntryExpression.getPath(), true, null, fromClause, selectAlias, fromSubquery, fromSelectAlias, joinRequired, false, fetch);
         JoinNode current = (JoinNode) mapEntryExpression.getPath().getBaseNode();
         String joinRelationName = "ENTRY(" + current.getParentTreeNode().getRelationName() + ")";
-        MapAttribute<?, ?, ?> mapAttribute = (MapAttribute<?, ?, ?>) current.getParentTreeNode().getAttribute();
-        Attribute<?, ?> entryAttribute = new MapEntryAttribute<>(mapAttribute);
+        ExtendedAttribute<?, ?> entryAttribute = new ExtendedMapEntryAttribute<>(current.getParentTreeNode().getAttribute());
         String aliasToUse = alias == null ? current.getParentTreeNode().getRelationName().replaceAll("\\.", "_") + "_entry" : alias;
         Type<?> joinRelationType = metamodel.type(Map.Entry.class);
         current = getOrCreate(current, joinRelationName, joinRelationType, null, aliasToUse, JoinType.LEFT, "Ambiguous implicit join", implicit, true, entryAttribute);
@@ -2190,8 +2189,7 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         implicitJoin(listIndexExpression.getPath(), true, null, fromClause, selectAlias, fromSubquery, fromSelectAlias, joinRequired, false, fetch);
         JoinNode current = (JoinNode) listIndexExpression.getPath().getBaseNode();
         String joinRelationName = "INDEX(" + current.getParentTreeNode().getRelationName() + ")";
-        ListAttribute<?, ?> listAttribute = (ListAttribute<?, ?>) current.getParentTreeNode().getAttribute();
-        Attribute<?, ?> indexAttribute = new ListIndexAttribute<>(listAttribute);
+        ExtendedAttribute<?, ?> indexAttribute = new ExtendedListIndexAttribute<>(current.getParentTreeNode().getAttribute());
         String aliasToUse = alias == null ? current.getParentTreeNode().getRelationName().replaceAll("\\.", "_") + "_index" : alias;
         Type<?> joinRelationType = metamodel.type(Integer.class);
         current = getOrCreate(current, joinRelationName, joinRelationType, null, aliasToUse, JoinType.LEFT, "Ambiguous implicit join", implicit, true, indexAttribute);
@@ -2318,7 +2316,8 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         }
 
         Type<?> joinRelationType = attrJoinResult.getAttributeType();
-        JoinNode newNode = getOrCreate(baseNode, joinRelationName, joinRelationType, treatType, alias, joinType, "Ambiguous implicit join", implicit, defaultJoin, attr);
+        ExtendedManagedType managedType = metamodel.getManagedType(ExtendedManagedType.class, JpaMetamodelUtils.getTypeName(baseNodeType));
+        JoinNode newNode = getOrCreate(baseNode, joinRelationName, joinRelationType, treatType, alias, joinType, "Ambiguous implicit join", implicit, defaultJoin, managedType.getAttribute(joinRelationName));
 
         return new JoinResult(newNode, null, newNode.getNodeType());
     }
@@ -2339,7 +2338,7 @@ public class JoinManager extends AbstractManager<ExpressionModifier> {
         }
     }
 
-    private JoinNode getOrCreate(JoinNode baseNode, String joinRelationName, Type<?> joinRelationType, String treatType, String alias, JoinType type, String errorMessage, boolean implicit, boolean defaultJoin, Attribute<?, ?> attribute) {
+    private JoinNode getOrCreate(JoinNode baseNode, String joinRelationName, Type<?> joinRelationType, String treatType, String alias, JoinType type, String errorMessage, boolean implicit, boolean defaultJoin, ExtendedAttribute<?, ?> attribute) {
         JoinTreeNode treeNode = baseNode.getOrCreateTreeNode(joinRelationName, attribute);
         JoinNode node = treeNode.getJoinNode(alias, defaultJoin);
         String qualificationExpression = null;

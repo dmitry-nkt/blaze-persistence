@@ -28,7 +28,7 @@ import java.util.Set;
  * @author Christian Beikov
  * @since 1.2.0
  */
-public interface ExtendedManagedType<X> {
+public interface ExtendedManagedType<X> extends ExtendedType<X> {
 
     /**
      * Returns the underlying managed type.

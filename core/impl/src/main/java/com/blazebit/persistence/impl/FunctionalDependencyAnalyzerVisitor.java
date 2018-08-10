@@ -258,7 +258,7 @@ class FunctionalDependencyAnalyzerVisitor extends AbortableVisitorAdapter {
                 // To support this, we need to find top-level equality predicates between unique keys of the joined relations in the query
                 return false;
             } else {
-                attr = baseNode.getParentTreeNode().getAttribute();
+                attr = baseNode.getParentTreeNode().getAttribute().getAttribute();
                 // Only one-to-one relation joins i.e. joins having a unique key with unique key equality predicate are uniqueness preserving
 
                 // TODO: With #610 we could actually also support ManyToOne relations here if there is a unique key with constant equality predicate for the parent node which is a root node

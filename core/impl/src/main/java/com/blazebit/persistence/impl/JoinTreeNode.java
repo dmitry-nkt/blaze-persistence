@@ -17,6 +17,7 @@
 package com.blazebit.persistence.impl;
 
 import com.blazebit.persistence.parser.util.JpaMetamodelUtils;
+import com.blazebit.persistence.spi.ExtendedAttribute;
 
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -31,7 +32,7 @@ import javax.persistence.metamodel.Attribute;
 public class JoinTreeNode {
 
     private final String relationName;
-    private final Attribute<?, ?> attribute;
+    private final ExtendedAttribute<?, ?> attribute;
     private JoinNode defaultNode;
     private final boolean collection;
     private final boolean map;
@@ -39,19 +40,19 @@ public class JoinTreeNode {
     /* maps join aliases to join nodes */
     private final NavigableMap<String, JoinNode> joinNodes = new TreeMap<String, JoinNode>();
 
-    public JoinTreeNode(String relationName, Attribute<?, ?> attribute) {
+    public JoinTreeNode(String relationName, ExtendedAttribute<?, ?> attribute) {
         this.relationName = relationName;
         this.attribute = attribute;
-        this.collection = attribute.isCollection();
-        this.map = JpaMetamodelUtils.isMap(attribute);
-        this.optional = JpaMetamodelUtils.isOptional(attribute);
+        this.collection = attribute.getAttribute().isCollection();
+        this.map = JpaMetamodelUtils.isMap(attribute.getAttribute());
+        this.optional = JpaMetamodelUtils.isOptional(attribute.getAttribute());
     }
 
     public String getRelationName() {
         return relationName;
     }
 
-    public Attribute<?, ?> getAttribute() {
+    public ExtendedAttribute<?, ?> getAttribute() {
         return attribute;
     }
 

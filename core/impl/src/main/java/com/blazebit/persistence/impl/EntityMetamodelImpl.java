@@ -23,6 +23,7 @@ import com.blazebit.persistence.parser.EntityMetamodel;
 import com.blazebit.persistence.parser.util.JpaMetamodelUtils;
 import com.blazebit.persistence.spi.ExtendedAttribute;
 import com.blazebit.persistence.spi.ExtendedManagedType;
+import com.blazebit.persistence.spi.ExtendedType;
 import com.blazebit.persistence.spi.JoinTable;
 import com.blazebit.persistence.spi.JpaProvider;
 import com.blazebit.persistence.spi.JpaProviderFactory;
@@ -437,11 +438,19 @@ public class EntityMetamodelImpl implements EntityMetamodel {
     }
 
     @Override
+    public <T> T getManagedType(Class<T> cls, ManagedType<?> managedType) {
+        if (managedType.getJavaType() == null) {
+            return getManagedType(cls, JpaMetamodelUtils.getTypeName(managedType));
+        } else {
+            return getManagedType(cls, managedType.getJavaType());
+        }
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public <T> T getManagedType(Class<T> cls, Class<?> managedType) {
-        ExtendedManagedType<?> extendedManagedType = getEntry(managedType);
         if (cls == ExtendedManagedType.class) {
-            return (T) extendedManagedType;
+            return (T) getEntry(managedType);
         }
         return null;
     }
@@ -449,9 +458,38 @@ public class EntityMetamodelImpl implements EntityMetamodel {
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getManagedType(Class<T> cls, String managedTypeName) {
-        ExtendedManagedType<?> extendedManagedType = getEntry(managedTypeName);
         if (cls == ExtendedManagedType.class) {
+            return (T) getEntry(managedTypeName);
+        }
+        return null;
+    }
+
+    @Override
+    public <T> T getType(Class<T> cls, Type<?> type) {
+        if (type.getJavaType() == null) {
+            return getType(cls, JpaMetamodelUtils.getTypeName(type));
+        } else {
+            return getType(cls, type.getJavaType());
+        }
+    }
+
+    @Override
+    public <T> T getType(Class<T> cls, Class<?> type) {
+        if (cls == ExtendedType.class || cls == ExtendedManagedType.class) {
+            ExtendedManagedTypeImpl<?> extendedManagedType = extendedManagedTypes.get(type);
+            if (extendedManagedType == null) {
+                return (T) type(type);
+            }
             return (T) extendedManagedType;
+        }
+        return null;
+    }
+
+    @Override
+    public <T> T getType(Class<T> cls, String typeName) {
+        if (cls == ExtendedType.class || cls == ExtendedManagedType.class) {
+            // This can only be an extended managed type
+            return (T) getEntry(typeName);
         }
         return null;
     }
@@ -736,7 +774,7 @@ public class EntityMetamodelImpl implements EntityMetamodel {
      * @author Christian Beikov
      * @since 1.2.0
      */
-    private static class BasicTypeImpl<T> implements BasicType<T> {
+    private static class BasicTypeImpl<T> implements BasicType<T>, ExtendedType<T> {
 
         private final Class<T> cls;
 
@@ -752,6 +790,11 @@ public class EntityMetamodelImpl implements EntityMetamodel {
         @Override
         public Class<T> getJavaType() {
             return cls;
+        }
+
+        @Override
+        public Type<T> getType() {
+            return this;
         }
     }
 }

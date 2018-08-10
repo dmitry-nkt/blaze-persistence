@@ -27,6 +27,7 @@ import com.blazebit.persistence.parser.expression.MapEntryExpression;
 import com.blazebit.persistence.parser.expression.MapKeyExpression;
 import com.blazebit.persistence.parser.expression.PathElementExpression;
 import com.blazebit.persistence.parser.expression.PathExpression;
+import com.blazebit.persistence.parser.expression.PathReference;
 import com.blazebit.persistence.parser.expression.PropertyExpression;
 import com.blazebit.persistence.parser.expression.StringLiteral;
 import com.blazebit.persistence.parser.expression.VisitorAdapter;
@@ -35,10 +36,14 @@ import com.blazebit.persistence.parser.predicate.CompoundPredicate;
 import com.blazebit.persistence.parser.predicate.EqPredicate;
 import com.blazebit.persistence.parser.predicate.Predicate;
 import com.blazebit.persistence.parser.util.JpaMetamodelUtils;
+import com.blazebit.persistence.spi.ExtendedAttribute;
+import com.blazebit.persistence.spi.ExtendedManagedType;
+import com.blazebit.persistence.spi.ExtendedType;
 
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.EntityType;
 import javax.persistence.metamodel.ManagedType;
+import javax.persistence.metamodel.PluralAttribute;
 import javax.persistence.metamodel.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,7 +75,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
 
     private final JoinNode correlationParent;
     private final String correlationPath;
-    private final Type<?> nodeType;
+    private final ExtendedType<?> nodeType;
     private final EntityType<?> treatType;
     private final String valuesTypeName;
     private final int valueCount;
@@ -116,7 +121,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         this.joinNodesForTreatConstraint = Collections.unmodifiableList(joinNodesForTreatConstraint);
     }
 
-    private JoinNode(JoinNode parent, JoinTreeNode parentTreeNode, JoinType joinType, JoinNode correlationParent, String correlationPath, Type<?> nodeType, EntityType<?> treatType, String qualificationExpression, JoinAliasInfo aliasInfo) {
+    private JoinNode(JoinNode parent, JoinTreeNode parentTreeNode, JoinType joinType, JoinNode correlationParent, String correlationPath, ExtendedType<?> nodeType, EntityType<?> treatType, String qualificationExpression, JoinAliasInfo aliasInfo) {
         this.parent = parent;
         this.parentTreeNode = parentTreeNode;
         this.joinType = joinType;
@@ -150,7 +155,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         onUpdate(null);
     }
 
-    private JoinNode(ManagedType<?> nodeType, String valuesTypeName, int valueCount, String valuesIdName, String valuesCastedParameter, String[] valuesAttributes, JoinAliasInfo aliasInfo) {
+    private JoinNode(ExtendedManagedType<?> nodeType, String valuesTypeName, int valueCount, String valuesIdName, String valuesCastedParameter, String[] valuesAttributes, JoinAliasInfo aliasInfo) {
         this.parent = null;
         this.parentTreeNode = null;
         this.joinType = null;
@@ -169,23 +174,23 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         onUpdate(null);
     }
 
-    public static JoinNode createRootNode(EntityType<?> nodeType, JoinAliasInfo aliasInfo) {
+    public static JoinNode createRootNode(ExtendedManagedType<?> nodeType, JoinAliasInfo aliasInfo) {
         return new JoinNode(null, null, null, null, null, nodeType, null, null, aliasInfo);
     }
 
-    public static JoinNode createValuesRootNode(ManagedType<?> nodeType, String valuesTypeName, int valueCount, String valuesIdName, String valuesCastedParameter, String[] valuesAttributes, JoinAliasInfo aliasInfo) {
+    public static JoinNode createValuesRootNode(ExtendedManagedType<?> nodeType, String valuesTypeName, int valueCount, String valuesIdName, String valuesCastedParameter, String[] valuesAttributes, JoinAliasInfo aliasInfo) {
         return new JoinNode(nodeType, valuesTypeName, valueCount, valuesIdName, valuesCastedParameter, valuesAttributes, aliasInfo);
     }
 
-    public static JoinNode createCorrelationRootNode(JoinNode correlationParent, String correlationPath, Type<?> nodeType, EntityType<?> treatType, JoinAliasInfo aliasInfo) {
+    public static JoinNode createCorrelationRootNode(JoinNode correlationParent, String correlationPath, ExtendedType<?> nodeType, EntityType<?> treatType, JoinAliasInfo aliasInfo) {
         return new JoinNode(null, null, null, correlationParent, correlationPath, nodeType, treatType, null, aliasInfo);
     }
 
-    public static JoinNode createEntityJoinNode(JoinNode parent, JoinType joinType, EntityType<?> nodeType, JoinAliasInfo aliasInfo) {
+    public static JoinNode createEntityJoinNode(JoinNode parent, JoinType joinType, ExtendedManagedType<?> nodeType, JoinAliasInfo aliasInfo) {
         return new JoinNode(parent, null, joinType, null, null, nodeType, null, null, aliasInfo);
     }
 
-    public static JoinNode createAssociationJoinNode(JoinNode parent, JoinTreeNode parentTreeNode, JoinType joinType, Type<?> nodeType, EntityType<?> treatType, String qualificationExpression, JoinAliasInfo aliasInfo) {
+    public static JoinNode createAssociationJoinNode(JoinNode parent, JoinTreeNode parentTreeNode, JoinType joinType, ExtendedType<?> nodeType, EntityType<?> treatType, String qualificationExpression, JoinAliasInfo aliasInfo) {
         return new JoinNode(parent, parentTreeNode, joinType, null, null, nodeType, treatType, qualificationExpression, aliasInfo);
     }
 
@@ -193,9 +198,9 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         // NOTE: no cloning of treatedJoinNodes and entityJoinNodes is intentional
         JoinNode newNode;
         if (valueCount > 0) {
-            newNode = createValuesRootNode((ManagedType<?>) nodeType, valuesTypeName, valueCount, valuesIdName, valuesCastedParameter, valuesAttributes, aliasInfo);
+            newNode = createValuesRootNode((ExtendedManagedType<?>) nodeType, valuesTypeName, valueCount, valuesIdName, valuesCastedParameter, valuesAttributes, aliasInfo);
         } else if (joinType == null) {
-            newNode = createRootNode((EntityType<?>) nodeType, aliasInfo);
+            newNode = createRootNode((ExtendedManagedType<?>) nodeType, aliasInfo);
         } else {
             throw new UnsupportedOperationException("Cloning subqueries not yet implemented!");
         }
@@ -207,7 +212,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         // NOTE: no cloning of onPredicate, treatedJoinNodes and entityJoinNodes is intentional
         JoinNode newNode;
         if (parentTreeNode == null) {
-            newNode = createEntityJoinNode(parent, joinType, (EntityType<?>) nodeType, aliasInfo);
+            newNode = createEntityJoinNode(parent, joinType, (ExtendedManagedType<?>) nodeType, aliasInfo);
         } else {
             newNode = createAssociationJoinNode(parent, parentTreeNode, joinType, nodeType, treatType, qualificationExpression, aliasInfo);
         }
@@ -252,7 +257,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
             // we definitively need the join
             // NOTE: an array expression condition with a left join will always produce 1 row
             // so the join is not yet absolutely mandatory 
-            if (!isEmptyCondition() && !isArrayExpressionCondition()) {
+            if (!isEmptyCondition() && !isUniqueKeyExpressionCondition()) {
                 computedMandatory = true;
             }
 
@@ -278,23 +283,66 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         return onPredicate == null || onPredicate.getChildren().isEmpty();
     }
     
-    private boolean isArrayExpressionCondition() {
-        if (onPredicate == null || onPredicate.getChildren().size() != 1) {
+    public boolean isUniqueKeyExpressionCondition() {
+        int size;
+        if (onPredicate == null || (size = onPredicate.getChildren().size()) == 0) {
             return false;
         }
+        // We also check if a unique attribute is used in an EqPredicate for inverse collections and sets
+        if (parentTreeNode != null && (parentTreeNode.getAttribute().getJoinTable() == null || ((PluralAttribute<?, ?, ?>) parentTreeNode.getAttribute().getAttribute()).getCollectionType() == PluralAttribute.CollectionType.SET)) {
+            FunctionalDependencyAnalyzerVisitor functionalDependencyAnalyzerVisitor = new FunctionalDependencyAnalyzerVisitor(met);
+            for (int i = 0; i < size; i++) {
+                Predicate predicate = onPredicate.getChildren().get(i);
+                if (!(predicate instanceof EqPredicate)) {
+                    continue;
+                }
 
-        Predicate predicate = onPredicate.getChildren().get(0);
-        if (!(predicate instanceof EqPredicate)) {
-            return false;
-        }
+                EqPredicate eqPredicate = (EqPredicate) predicate;
+                Expression left = eqPredicate.getLeft();
 
-        EqPredicate eqPredicate = (EqPredicate) predicate;
-        Expression left = eqPredicate.getLeft();
-        if (left instanceof MapKeyExpression) {
-            return this.equals(((MapKeyExpression) left).getPath().getBaseNode());
-        }
-        if (left instanceof ListIndexExpression) {
-            return this.equals(((ListIndexExpression) left).getPath().getBaseNode());
+                JoinNode n;
+                if (left instanceof PathExpression) {
+                    PathReference pathReference = ((PathExpression) left).getPathReference();
+                    if (pathReference.getField() != null && ((JoinNode) pathReference.getBaseNode()).getManagedType().getId)
+                } else {
+                    Expression right = eqPredicate.getRight();
+                    if (right instanceof PathExpression) {
+                        PathReference pathReference = ((PathExpression) right).getPathReference();
+                    } else {
+                        n = null;
+                    }
+                }
+            }
+        } else {
+            for (int i = 0; i < size; i++) {
+                Predicate predicate = onPredicate.getChildren().get(i);
+                if (!(predicate instanceof EqPredicate)) {
+                    continue;
+                }
+
+                EqPredicate eqPredicate = (EqPredicate) predicate;
+                Expression left = eqPredicate.getLeft();
+
+                JoinNode n;
+                if (left instanceof ListIndexExpression) {
+                    n = (JoinNode) ((ListIndexExpression) left).getPath().getBaseNode();
+                } else if (left instanceof MapKeyExpression) {
+                    n = (JoinNode) ((MapKeyExpression) left).getPath().getBaseNode();
+                } else {
+                    Expression right = eqPredicate.getRight();
+                    if (right instanceof ListIndexExpression) {
+                        n = (JoinNode) ((ListIndexExpression) right).getPath().getBaseNode();
+                    } else if (right instanceof MapKeyExpression) {
+                        n = (JoinNode) ((MapKeyExpression) right).getPath().getBaseNode();
+                    } else {
+                        n = null;
+                    }
+                }
+
+                if (n == this) {
+                    return true;
+                }
+            }
         }
 
         return false;
@@ -496,7 +544,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         return treatedJoinNodes;
     }
 
-    public JoinTreeNode getOrCreateTreeNode(String joinRelationName, Attribute<?, ?> attribute) {
+    public JoinTreeNode getOrCreateTreeNode(String joinRelationName, ExtendedAttribute<?, ?> attribute) {
         JoinTreeNode node = nodes.get(joinRelationName);
 
         if (node == null) {
@@ -515,7 +563,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         entityJoinNodes.add(entityJoinNode);
     }
 
-    public Type<?> getNodeType() {
+    public ExtendedType<?> getNodeType() {
         if (treatType != null) {
             return treatType;
         }
@@ -533,7 +581,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         throw new IllegalArgumentException("Expected type of join node to be an entity but isn't: " + JpaMetamodelUtils.getTypeName(nodeType));
     }
 
-    public ManagedType<?> getManagedType() {
+    public ExtendedManagedType<?> getManagedType() {
         if (treatType != null) {
             return treatType;
         }
@@ -544,7 +592,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         throw new IllegalArgumentException("Expected type of join node to be a managed type but isn't: " + JpaMetamodelUtils.getTypeName(nodeType));
     }
 
-    public Type<?> getBaseType() {
+    public ExtendedType<?> getBaseType() {
         return nodeType;
     }
 
@@ -621,7 +669,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
             JoinTreeNode treeNode = stack.remove(stack.size() - 1);
 
             for (JoinNode joinNode : treeNode.getJoinNodes().values()) {
-                if (treeNode.isCollection() && !joinNode.hasArrayExpressionPredicate()) {
+                if (treeNode.isCollection() && !joinNode.isUniqueKeyExpressionCondition()) {
                     return true;
                 }
                 stack.addAll(joinNode.nodes.values());
@@ -629,30 +677,6 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
         }
 
         return false;
-    }
-
-    public boolean hasArrayExpressionPredicate() {
-        CompoundPredicate compoundPredicate = getOnPredicate();
-        if (compoundPredicate == null || compoundPredicate.getChildren().isEmpty()) {
-            return false;
-        }
-        Predicate predicate = compoundPredicate.getChildren().get(0);
-        if (!(predicate instanceof EqPredicate)) {
-            return false;
-        }
-        EqPredicate eqPredicate = (EqPredicate) predicate;
-        JoinNode n;
-        if (eqPredicate.getLeft() instanceof ListIndexExpression) {
-            ListIndexExpression left = (ListIndexExpression) eqPredicate.getLeft();
-            n = (JoinNode) left.getPath().getBaseNode();
-        } else if (eqPredicate.getLeft() instanceof MapKeyExpression) {
-            MapKeyExpression left = (MapKeyExpression) eqPredicate.getLeft();
-            n = (JoinNode) left.getPath().getBaseNode();
-        } else {
-            n = null;
-        }
-
-        return n == this;
     }
     
     Set<JoinNode> getCollectionJoins() {
@@ -676,7 +700,7 @@ public class JoinNode implements From, ExpressionModifier, BaseNode {
             JoinTreeNode treeNode = stack.remove(stack.size() - 1);
 
             for (JoinNode joinNode : treeNode.getJoinNodes().values()) {
-                if (treeNode.isCollection() && !joinNode.hasArrayExpressionPredicate()) {
+                if (treeNode.isCollection() && !joinNode.isUniqueKeyExpressionCondition()) {
                     collectionJoins.add(joinNode);
                 }
                 stack.addAll(joinNode.nodes.values());
