@@ -40,9 +40,9 @@ if [ "$TRAVIS_REPO_SLUG" == "Blazebit/blaze-persistence" ] &&
     [ "$RDBMS" == "h2" ]; then
   # We need a hibernate6 build here so we can do a normal build
   cd ..
-  git clone --depth=1 --branch="wip/6.0" https://github.com/beikov/hibernate-orm.git hibernate6
+  git clone --depth=1 --branch="bp-integration" https://github.com/beikov/hibernate-orm.git hibernate6
   cd hibernate6
-  ./gradlew build publishToMavenLocal -x :documentation:buildDocs -x :hibernate-core:javadoc -x :hibernate-jpamodelgen:javadoc -x :documentation:aggregateJavadocs -x test -x javadoc -x checkStyleMain -x checkStyleTest
+  ./gradlew -Dmaven.repo.local=$HOME/.m2/repository build publishToMavenLocal -x :documentation:buildDocs -x :hibernate-core:javadoc -x :hibernate-jpamodelgen:javadoc -x :documentation:aggregateJavadocs -x test -x javadoc -x checkStyleMain -x checkStyleTest
   cd ../blaze-persistence
 
   exec mvn -B -P ${JPAPROVIDER},${RDBMS},${SPRING_DATA:-spring-data-1.11.x},${DELTASPIKE:-deltaspike-1.7} clean install -V $PROPERTIES
@@ -53,10 +53,10 @@ else
     [ "$JPAPROVIDER" == "hibernate-6.0" ] &&
     [ "$RDBMS" == "h2" ]; then
     # Just in case we want to run against a specific version
-  cd ..
-    git clone --depth=1 --branch="wip/6.0" https://github.com/beikov/hibernate-orm.git hibernate6
+    cd ..
+    git clone --depth=1 --branch="bp-integration" https://github.com/beikov/hibernate-orm.git hibernate6
     cd hibernate6
-    ./gradlew build publishToMavenLocal -x :documentation:buildDocs -x :hibernate-core:javadoc -x :hibernate-jpamodelgen:javadoc -x :documentation:aggregateJavadocs -x test -x javadoc -x checkStyleMain -x checkStyleTest
+    ./gradlew -Dmaven.repo.local=$HOME/.m2/repository build publishToMavenLocal -x :documentation:buildDocs -x :hibernate-core:javadoc -x :hibernate-jpamodelgen:javadoc -x :documentation:aggregateJavadocs -x test -x javadoc -x checkStyleMain -x checkStyleTest
     cd -
     cd ../blaze-persistence
   fi

@@ -26,11 +26,14 @@ import org.hibernate.query.sqm.function.FunctionRenderingSupport;
 import org.hibernate.query.sqm.produce.function.FunctionReturnTypeResolver;
 import org.hibernate.query.sqm.tree.SqmTypedNode;
 import org.hibernate.sql.ast.SqlAstWalker;
+import org.hibernate.sql.ast.spi.AbstractSqlAstWalker;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.tree.SqlAstNode;
 import org.hibernate.sql.ast.tree.expression.Expression;
+import org.hibernate.sql.ast.tree.expression.QueryLiteral;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -40,14 +43,20 @@ import java.util.function.Supplier;
  * @since 1.5.0
  */
 public class HibernateJpqlFunctionAdapter extends AbstractSqmSelfRenderingFunctionDescriptor implements FunctionRenderingSupport {
-    
+
     private final JpqlFunction function;
 
     public HibernateJpqlFunctionAdapter(SessionFactoryImplementor sfi, JpqlFunction function) {
         super(null, null, new FunctionReturnTypeResolver() {
             @Override
             public AllowableFunctionReturnType<?> resolveFunctionReturnType(AllowableFunctionReturnType<?> impliedType, List<SqmTypedNode<?>> arguments, TypeConfiguration typeConfiguration) {
-                return null;
+                Class<?> argumentClass = null;
+                if (!arguments.isEmpty()) {
+                    final SqmTypedNode<?> specifiedArgument = arguments.get(0);
+                    argumentClass = specifiedArgument.getNodeJavaTypeDescriptor().getJavaType();
+                }
+                Class<?> returnType = function.getReturnType(argumentClass);
+                return returnType == null ? null : typeConfiguration.getBasicTypeForJavaType(returnType);
             }
 
             @Override
@@ -84,7 +93,27 @@ public class HibernateJpqlFunctionAdapter extends AbstractSqmSelfRenderingFuncti
 
     @Override
     public void render(SqlAppender sqlAppender, List<SqlAstNode> sqlAstArguments, SqlAstWalker walker) {
-        HibernateFunctionRenderContext context = new HibernateFunctionRenderContext(sqlAstArguments);
+        AbstractSqlAstWalker sqlAstWalker = (AbstractSqlAstWalker) walker;
+        CustomStandardSqlAstSelectTranslator customStandardSqlAstSelectTranslator = new CustomStandardSqlAstSelectTranslator(sqlAstWalker.getSessionFactory());
+        List<String> sqlArguments = new ArrayList<>(sqlAstArguments.size());
+        for (SqlAstNode sqlAstArgument : sqlAstArguments) {
+            customStandardSqlAstSelectTranslator.getStringBuilder().setLength(0);
+            if (sqlAstArgument instanceof QueryLiteral<?>) {
+                QueryLiteral<?> literal = (QueryLiteral<?>) sqlAstArgument;
+                sqlArguments.add(
+                        literal.getJdbcMapping()
+                            .getSqlTypeDescriptor()
+                            .getJdbcLiteralFormatter(literal.getJdbcMapping().getJavaTypeDescriptor())
+                            .toJdbcLiteral(literal.getLiteralValue(), sqlAstWalker.getDialect(), null)
+                );
+            } else {
+                sqlAstArgument.accept(customStandardSqlAstSelectTranslator);
+                sqlArguments.add(customStandardSqlAstSelectTranslator.getSql());
+            }
+        }
+
+        sqlAstWalker.getParameterBinders().addAll(customStandardSqlAstSelectTranslator.getParameterBinders());
+        HibernateFunctionRenderContext context = new HibernateFunctionRenderContext(sqlArguments);
         function.render(context);
         sqlAppender.appendSql(context.renderToString());
     }

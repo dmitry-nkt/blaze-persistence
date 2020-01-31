@@ -311,7 +311,7 @@ public class HibernateExtendedQuerySupport implements ExtendedQuerySupport {
             );
 
             final JdbcParameterBindings tempJdbcParameterBindings = SqmUtil.createJdbcParameterBindings(
-                    ((QuerySqmImpl<?>) participatingQuery).getQueryParameterBindings(),
+                    participatingQuery.unwrap(QuerySqmImpl.class).getQueryParameterBindings(),
                     interpretation.domainParameterXref,
                     jdbcParamsXref,
                     session.getFactory().getDomainModel(),

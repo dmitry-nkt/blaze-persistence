@@ -27,7 +27,6 @@ import org.hibernate.dialect.H2Dialect;
 import org.hibernate.dialect.HSQLDialect;
 import org.hibernate.dialect.InformixDialect;
 import org.hibernate.dialect.IngresDialect;
-import org.hibernate.dialect.InterbaseDialect;
 import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.dialect.OracleDialect;
 import org.hibernate.dialect.PostgreSQLDialect;
@@ -96,8 +95,6 @@ public abstract class AbstractHibernateEntityManagerFactoryIntegrator implements
             return "informix";
         } else if (dialect instanceof IngresDialect) {
             return "ingres";
-        } else if (dialect instanceof InterbaseDialect) {
-            return "interbase";
         } else {
             return null;
         }
